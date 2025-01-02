@@ -1,1 +1,1 @@
-# couchbase-mcp-monsters
+# couchbase-mcp
