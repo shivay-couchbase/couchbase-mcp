@@ -105,26 +105,6 @@ function capitalizeFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-// async function getCharacter(name: string): Promise<StarWarsCharacter | null> {
-//   if (!name) {
-//       throw new Error("Planet name is required");
-//   }
-
-//   // Change the docId format to just use capitalized planet name
-//   const docId = capitalizeFirstLetter(name);
-//   debugLog(`Fetching planet with ID: ${docId}`);
-  
-//   const collection = await getCollection();
-//   try {
-//       const result = await collection.get(docId);
-//       return result.content as StarWarsCharacter;
-//   }
-//   catch (err) {
-//       console.error(`Error fetching planet ${docId}:`, err);
-//       return null;
-//   }
-// }
-
 async function getCharacter(name: string): Promise<StarWarsCharacter | null> {
   if (!name) {
       throw new Error("Planet name is required");
