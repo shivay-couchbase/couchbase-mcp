@@ -63,8 +63,8 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 {
 {
     "mcpServers": {
-      "monster-server": {
-        "name": "monster-server",
+      "starwars-server": {
+        "name": "starwars-server",
         "command": "/usr/local/bin/node",
         "args": ["/Users/shivaylamba/Desktop/cb-repos/mcp-cbimplementation/datastax-mcp-monsters/build/index.js"],
         "env": {
