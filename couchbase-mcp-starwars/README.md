@@ -48,6 +48,8 @@ query "select * from name_of_your_bucket._default._default limit 1"
 
 Replace the `name_of_your_bucket` with the name of your bucket you created.
 
+## Setting up MCP 
+
 Run `pnpm install` to install the dependencies.
 
 Run `pnpm run build` to build the server.
