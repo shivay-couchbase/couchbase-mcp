@@ -1,4 +1,4 @@
-# Couchbase Monster Data MCP Server
+# Couchbase Starwars Data MCP Server
 
 ## Installation
 
