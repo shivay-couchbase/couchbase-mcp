@@ -1,5 +1,5 @@
 {
-  "name": "monsters-server",
+  "name": "starwars-server",
   "version": "0.1.0",
   "description": "A Model Context Protocol server",
   "private": true,
