@@ -1,10 +1,11 @@
-#!/usr/bin/env node
+// #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   CallToolRequest,
+  ImageContent,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -18,6 +19,8 @@ import couchbase, {
   GetResult
 } from "couchbase";
 import "dotenv/config";
+import { OpenAI } from "openai";
+import { string } from "zod";
 
 // Type definitions
 interface StarWarsCharacter {
@@ -66,6 +69,7 @@ const StarWarsSchema = z.object({
   url: z.string(),
   embedding: z.array(z.number()).optional(),
 });
+
 
 // Environment variables
 const {
@@ -209,6 +213,31 @@ async function findSimilarCharacters(planetName: string): Promise<SimilarCharact
     }
 }
 
+async function generatePlanetImage(planetName: string): Promise<string | null> {
+  const apiKey = process.env.NEBIUS_API_KEY;
+  if (!apiKey) {
+    throw new Error("NEBIUS_API_KEY is not configured");
+  }
+
+  const client = new OpenAI({
+    baseURL: "https://api.studio.nebius.ai/v1/",
+    apiKey: apiKey,
+  });
+
+  const prompt = `A realistic astronomical image of the Star Wars planet ${planetName}. Highly detailed, photorealistic, cinematic, space background.`;
+
+  const response = await client.images.generate({
+    model: "black-forest-labs/flux-schnell",
+    prompt: prompt,
+    response_format: "b64_json",
+    size: "256x256",
+    quality: "standard",
+    n: 1
+  });
+
+  return response.data[0].b64_json || null;
+}
+
 const server = new Server(
   {
     name: "starwars-server",
@@ -237,6 +266,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         description: "Find similar planets by name to the given name",
         inputSchema: zodToJsonSchema(StarWarsSchema.pick({ name: true })),
       },
+      {
+        name: "generate_planet_image",
+        description: "Generate an image for a Star Wars planet",
+        inputSchema: zodToJsonSchema(StarWarsSchema.pick({ name: true })),
+      },
+      {
+        name: "find_similar_planets",
+        description: "Find similar planets to the given name (without generating images)",
+        inputSchema: zodToJsonSchema(StarWarsSchema.pick({ name: true })),
+      }
     ],
   };
 });
@@ -269,7 +308,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             isError: false,
         };
     }
-    case "find_planets_which_are_similar": {
+    case "find_planets_which_are_similar":
+    case "find_similar_planets": {
       const planetName = request.params.arguments?.name;
       if (typeof planetName !== 'string') {
         return {
@@ -277,16 +317,67 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
           isError: true,
         };
       }
-      const similarPlanets = await findSimilarCharacters(planetName);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(similarPlanets, null, 2),
-          },
-        ],
-        isError: false,
-      };
+      
+      try {
+        const similarPlanets = await findSimilarCharacters(planetName);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(similarPlanets, null, 2),
+            },
+          ],
+          isError: false,
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error finding similar planets: ${error instanceof Error ? error.message : 'Unknown error'}` 
+          }],
+          isError: true,
+        };
+      }
+    }
+    case "generate_planet_image": {
+      const planetName = request.params.arguments?.name;
+      if (typeof planetName !== 'string') {
+        return {
+          content: [{ type: "text", text: "Planet name must be a string" }],
+          isError: true,
+        };
+      }
+
+      try {
+        const base64Image = await generatePlanetImage(planetName);
+        
+        if (!base64Image) {
+          return {
+            content: [{ type: "text", text: "Failed to generate image" }],
+            isError: true,
+          };
+        }
+
+        // Ensure the image content is properly formatted
+        const imageContent: ImageContent = {
+          type: "image",
+          data: base64Image,
+          mimeType: "image/jpeg"
+        };
+
+        return {
+          content: [imageContent],
+          isError: false,
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}` 
+          }],
+          isError: true,
+        };
+      }
     }
     default:
       throw new Error("Unknown tool");
